@@ -1,0 +1,27 @@
+--cpu Cortex-M3
+"bootlodar_zet6\startup_stm32f103xe.o"
+"bootlodar_zet6\main.o"
+"bootlodar_zet6\gpio.o"
+"bootlodar_zet6\usart.o"
+"bootlodar_zet6\stm32f1xx_it.o"
+"bootlodar_zet6\stm32f1xx_hal_msp.o"
+"bootlodar_zet6\stm32f1xx_hal_gpio_ex.o"
+"bootlodar_zet6\stm32f1xx_hal_tim.o"
+"bootlodar_zet6\stm32f1xx_hal_tim_ex.o"
+"bootlodar_zet6\stm32f1xx_hal_uart.o"
+"bootlodar_zet6\stm32f1xx_hal.o"
+"bootlodar_zet6\stm32f1xx_hal_rcc.o"
+"bootlodar_zet6\stm32f1xx_hal_rcc_ex.o"
+"bootlodar_zet6\stm32f1xx_hal_gpio.o"
+"bootlodar_zet6\stm32f1xx_hal_dma.o"
+"bootlodar_zet6\stm32f1xx_hal_cortex.o"
+"bootlodar_zet6\stm32f1xx_hal_pwr.o"
+"bootlodar_zet6\stm32f1xx_hal_flash.o"
+"bootlodar_zet6\stm32f1xx_hal_flash_ex.o"
+"bootlodar_zet6\stm32f1xx_hal_exti.o"
+"bootlodar_zet6\system_stm32f1xx.o"
+"bootlodar_zet6\int_bootloader.o"
+--library_type=microlib --strict --scatter "BootLodar_ZET6\BootLodar_ZET6.sct"
+--summary_stderr --info summarysizes --map --load_addr_map_info --xref --callgraph --symbols
+--info sizes --info totals --info unused --info veneers
+--list "BootLodar_ZET6.map" -o BootLodar_ZET6\BootLodar_ZET6.axf
