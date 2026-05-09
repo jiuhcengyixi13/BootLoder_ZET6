@@ -1,6 +1,6 @@
 
 /**
- * @file booylader.c
+ * @file/int_bootloader.c
  * @brief Bootloader串口接收与Flash写入实现
  * @details 实现通过串口接收应用程序并写入Flash的功能
  */
@@ -15,6 +15,7 @@ uint32_t g_uart_rec_offset = 0;                              // Flash写入偏�
 uint8_t g_last_byte_flag = 0;                                // 是否有遗留单字节标记
 uint8_t g_last_byte = 0;                                     // 保存遗留的单字节
 uint8_t uart_rx_finish = 0;                                  // 接收完成标志位
+uint32_t last_receive_time = 0;
 
 void Int_flash_erase(void)
 {
@@ -160,6 +161,46 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
 
         uart_rx_finish = 1; // 只打标志！
 
+        
+          // 更新最后接收时间
+      last_receive_time = HAL_GetTick();
+
         HAL_UARTEx_ReceiveToIdle_IT(&huart1, g_uart_rec_buff, BOOTLOADER_UART_REC_BUFF_LEN);
     }
+}
+
+// 跳转到app
+void Int_bootloader_jump_to_app()
+{
+
+    typedef void (*pFunc)(void);
+
+    uint32_t app_stack_top = *(volatile uint32_t *)(APP_START_ADDRESS);
+    uint32_t app_reset_interrupt = *(volatile uint32_t *)(APP_START_ADDRESS + 4);
+    // 1.1校验栈顶地址
+    if ((app_stack_top & 0xffff0000) != APP_TOP_ADDR)
+    {
+        printf("stack addr error\n");
+        return;
+    }
+    // 1.2 校验复位中断地址
+    if (app_reset_interrupt < APP_START_ADDRESS || app_reset_interrupt > APP_END_ADDR)
+    {
+        printf("reset interrupt addr error\n");
+        return;
+    }
+
+    // 2.注销bootloader中断
+    //  2.1 关闭中断
+    __disable_irq(); 
+
+    // 2.2 设置堆栈指针
+    __set_MSP(app_stack_top);
+
+    // 2.3 重定向中断向量表
+    SCB->VTOR = APP_START_ADDRESS;
+
+    // 2.4跳转到A程序复位中断地址
+    pFunc jump_to_app = (pFunc)app_reset_interrupt;
+    jump_to_app();
 }
