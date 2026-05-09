@@ -10,7 +10,7 @@
 
 // 串口接受->准备接受A程序
 
-//程序写入的起始位置=>A区的的起始地址 假设B区16k A区512-16k 0x7c000总大小
+//程序写入的起始位置=>A区的的起始A地址 假设B区16k A区512-16k 0x7c000总大小
 #define APP_START_ADDRESS 0x08004000
 #define APP_TOP_ADDR 0x20000000
 #define APP_END_ADDR 0x08080000

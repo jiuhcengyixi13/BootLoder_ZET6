@@ -161,9 +161,8 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
 
         uart_rx_finish = 1; // 只打标志！
 
-        
-          // 更新最后接收时间
-      last_receive_time = HAL_GetTick();
+        // 更新最后接收时间
+        last_receive_time = HAL_GetTick();
 
         HAL_UARTEx_ReceiveToIdle_IT(&huart1, g_uart_rec_buff, BOOTLOADER_UART_REC_BUFF_LEN);
     }
@@ -192,7 +191,7 @@ void Int_bootloader_jump_to_app()
 
     // 2.注销bootloader中断
     //  2.1 关闭中断
-    __disable_irq(); 
+    __disable_irq();
 
     // 2.2 设置堆栈指针
     __set_MSP(app_stack_top);

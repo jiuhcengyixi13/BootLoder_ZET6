@@ -119,8 +119,6 @@ int main(void)
 
       // 清除标志
       uart_rx_finish = 0;
-
-     
     }
     // 混合方案：数据变化时打印 + 短延迟
     static uint16_t last_len = 0;
@@ -131,15 +129,14 @@ int main(void)
     }
 
     // ✅ 超时检测：有数据且超过2秒未收到新数据则跳转
-    if (g_uart_rec_full_len > 0 && 
+    if (g_uart_rec_full_len > 0 &&
         (HAL_GetTick() - last_receive_time) > RECEIVE_TIMEOUT_MS)
     {
-        printf("Receive complete! Total: %d bytes\n", g_uart_rec_full_len);
-        printf("Jumping to application...\n");
-        HAL_Delay(500);  // 等待串口发送完成
-        Int_bootloader_jump_to_app();  // ✅ 只在这里跳转一次
+      printf("Receive complete! Total: %d bytes\n", g_uart_rec_full_len);
+      printf("Jumping to application...\n");
+      HAL_Delay(500);               // 等待串口发送完成
+      Int_bootloader_jump_to_app(); // ✅ 只在这里跳转一次
     }
-  
 
     // HAL_Delay(3000);
     // Int_bootloder_jump_to_app();
