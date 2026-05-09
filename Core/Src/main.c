@@ -1,8 +1,15 @@
+
+
 /* USER CODE BEGIN Header */
 /**
  ******************************************************************************
  * @file           : main.c
- * @brief          : Main program body
+ * @brief          : Bootloader主程序入口
+ * @details        : 实现Bootloader的核心流程：
+ *                   1. 初始化HAL库、系统时钟、GPIO、UART
+ *                   2. 启动串口空闲中断接收
+ *                   3. 主循环处理：分包接收→Flash写入→超时跳转
+ *                   支持通过串口接收应用程序并自动跳转到应用
  ******************************************************************************
  * @attention
  *
@@ -16,13 +23,14 @@
  ******************************************************************************
  */
 /* USER CODE END Header */
+
 /* Includes ------------------------------------------------------------------*/
-#include "main.h"
-#include "usart.h"
-#include "gpio.h"
-#include "int_bootloader.h"
-#include "string.h"
-#include "stdio.h"
+#include "main.h"           // 主程序头文件（HAL库、外设声明等）
+#include "usart.h"          // UART驱动头文件（串口初始化和操作）
+#include "gpio.h"           // GPIO驱动头文件（LED等外设控制）
+#include "int_bootloader.h" // Bootloader接口头文件（Flash操作、跳转函数）
+#include "string.h"         // 字符串操作函数（memset等）
+#include "stdio.h"          // 标准输入输出（printf重定向到串口）
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -47,18 +55,19 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-extern uint8_t g_uart_rec_buff[];
-extern uint16_t g_uart_rec_len;
-extern uint16_t g_uart_rec_full_len;
-extern uint32_t g_uart_rec_offset;
-extern uint8_t g_last_byte_flag;
-extern uint8_t g_last_byte;
-extern uint8_t uart_rx_finish;
-extern uint32_t last_receive_time;
+// 外部变量声明（定义在 int_bootloader.c 中）
+extern uint8_t g_uart_rec_buff[];    // 串口接收缓冲区（最大512字节）
+extern uint16_t g_uart_rec_len;      // 当前接收帧的数据长度
+extern uint16_t g_uart_rec_full_len; // 累计接收的总数据长度
+extern uint32_t g_uart_rec_offset;   // Flash写入偏移量（相对于APP起始地址）
+extern uint8_t g_last_byte_flag;     // 遗留单字节标记（1=有遗留，0=无遗留）
+extern uint8_t g_last_byte;          // 遗留的单字节（用于奇偶长度拼接）
+extern uint8_t uart_rx_finish;       // 接收完成标志位（1=有新数据待处理）
+extern uint32_t last_receive_time;   // 最后接收时间戳（用于超时检测）
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
-void SystemClock_Config(void);
+void SystemClock_Config(void); // 系统时钟配置函数（72MHz）
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -70,11 +79,11 @@ void SystemClock_Config(void);
 
 /**
  * @brief  The application entry point.
+ * @details 程序入口函数，执行初始化并进入主循环
  * @retval int
  */
 int main(void)
 {
-
   /* USER CODE BEGIN 1 */
 
   /* USER CODE END 1 */
@@ -82,64 +91,72 @@ int main(void)
   /* MCU Configuration--------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-  HAL_Init();
+  HAL_Init(); // 初始化HAL库（包括Flash接口、SysTick定时器、NVIC等）
 
   /* USER CODE BEGIN Init */
 
   /* USER CODE END Init */
 
   /* Configure the system clock */
-  SystemClock_Config();
+  SystemClock_Config(); // 配置系统时钟为72MHz（使用HSE外部晶振）
 
   /* USER CODE BEGIN SysInit */
 
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
-  MX_GPIO_Init();
-  MX_USART1_UART_Init();
+  MX_GPIO_Init();        // 初始化GPIO（包括LED引脚配置）
+  MX_USART1_UART_Init(); // 初始化USART1（115200波特率，8N1）
+
   /* USER CODE BEGIN 2 */
+
+  // 启动Bootloader串口空闲中断接收
+  // 调用后开始监听串口数据，当串口空闲或缓冲区满时触发中断
   Int_bootloader_init();
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
+  while (1) // 主循环
   {
     /* USER CODE END WHILE */
-    if (uart_rx_finish == 1)
+
+    // ========== 串口数据处理 ==========
+    if (uart_rx_finish == 1) // 检测是否有新数据待处理
     {
-      // Flash 操作
-      HAL_FLASH_Unlock();
-      Int_flash_erase();
-      Int_flash_write_halfword();
-      HAL_FLASH_Lock();
-      // 清空缓存
+      // Flash操作流程：解锁→擦除→写入→锁定
+      HAL_FLASH_Unlock();         // 解锁Flash（允许写入操作）
+      Int_flash_erase();          // 判断并擦除目标Flash页（按需擦除）
+      Int_flash_write_halfword(); // 将数据写入Flash（处理奇偶长度拼接）
+      HAL_FLASH_Lock();           // 锁定Flash（保护数据不被意外修改）
+
+      // 清空接收缓冲区，准备接收下一包数据
       memset(g_uart_rec_buff, 0, BOOTLOADER_UART_REC_BUFF_LEN);
 
-      // 清除标志
+      // 清除接收完成标志，等待下一次中断
       uart_rx_finish = 0;
     }
-    // 混合方案：数据变化时打印 + 短延迟
-    static uint16_t last_len = 0;
-    if (g_uart_rec_full_len != last_len)
+
+    // ========== 接收进度显示 ==========
+    static uint16_t last_len = 0;        // 静态变量，记录上次打印的长度
+    if (g_uart_rec_full_len != last_len) // 只有当数据长度变化时才打印
     {
-      printf("Received: %d bytes\n", g_uart_rec_full_len);
-      last_len = g_uart_rec_full_len;
+      printf("Received: %d bytes\n", g_uart_rec_full_len); // 打印当前接收进度
+      last_len = g_uart_rec_full_len;                      // 更新上次打印的长度
     }
 
-    // ✅ 超时检测：有数据且超过2秒未收到新数据则跳转
-    if (g_uart_rec_full_len > 0 &&
-        (HAL_GetTick() - last_receive_time) > RECEIVE_TIMEOUT_MS)
+// ========== 超时检测与跳转 ==========
+#define RECEIVE_TIMEOUT_MS 2000                                   // 超时时间：2秒（无新数据即认为接收完成）
+    if (g_uart_rec_full_len > 0 &&                                // 条件1：已接收数据
+        (HAL_GetTick() - last_receive_time) > RECEIVE_TIMEOUT_MS) // 条件2：超过超时时间
     {
       printf("Receive complete! Total: %d bytes\n", g_uart_rec_full_len);
       printf("Jumping to application...\n");
-      HAL_Delay(500);               // 等待串口发送完成
-      Int_bootloader_jump_to_app(); // ✅ 只在这里跳转一次
+      HAL_Delay(500);               // 等待串口发送完成（避免数据丢失）
+      Int_bootloader_jump_to_app(); // 跳转到应用程序（只执行一次）
     }
 
-    // HAL_Delay(3000);
-    // Int_bootloder_jump_to_app();
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
@@ -147,6 +164,7 @@ int main(void)
 
 /**
  * @brief System Clock Configuration
+ * @details 配置系统时钟为72MHz，使用HSE外部晶振作为时钟源
  * @retval None
  */
 void SystemClock_Config(void)
@@ -183,20 +201,17 @@ void SystemClock_Config(void)
   }
 }
 
-/* USER CODE BEGIN 4 */
-
-/* USER CODE END 4 */
-
 /**
  * @brief  This function is executed in case of error occurrence.
+ * @details 错误处理函数，发生致命错误时进入死循环
  * @retval None
  */
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
-  __disable_irq();
-  while (1)
+  __disable_irq(); // 关闭所有中断
+  while (1)        // 死循环，防止程序继续执行
   {
   }
   /* USER CODE END Error_Handler_Debug */
