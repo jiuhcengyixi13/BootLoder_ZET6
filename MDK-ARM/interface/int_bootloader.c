@@ -15,8 +15,8 @@ uint16_t g_uart_rec_full_len = 0;                            // 累计接收的�
 uint32_t g_uart_rec_offset = 0;                              // Flash写入偏移量（相对于APP起始地址）
 uint8_t g_last_byte_flag = 0;                                // 遗留单字节标记（1=有遗留，0=无遗留）
 uint8_t g_last_byte = 0;                                     // 保存遗留的单字节（用于奇偶长度拼接）
-uint8_t uart_rx_finish = 0;                                  // 接收完成标志位（1=有新数据待处理）
-uint32_t last_receive_time = 0;                              // 最后一次接收时间戳（用于超时检测）
+uint8_t g_uart_rx_finish = 0;                                  // 接收完成标志位（1=有新数据待处理）
+uint32_t g_last_receive_time = 0;                              // 最后一次接收时间戳（用于超时检测）
 
 /**
  * @brief Flash页擦除函数
@@ -187,10 +187,10 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
         g_uart_rec_full_len += g_uart_rec_len;
 
         // 设置接收完成标志位，通知主循环处理数据
-        uart_rx_finish = 1;
+        g_uart_rx_finish = 1;
 
         // 更新最后接收时间戳（用于超时检测）
-        last_receive_time = HAL_GetTick();
+        g_last_receive_time = HAL_GetTick();
 
         // 重新启动串口空闲中断接收（必须重新调用以继续监听）
         HAL_UARTEx_ReceiveToIdle_IT(&huart1, g_uart_rec_buff, BOOTLOADER_UART_REC_BUFF_LEN);

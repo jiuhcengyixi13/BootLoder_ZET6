@@ -62,8 +62,8 @@ extern uint16_t g_uart_rec_full_len; // 累计接收的总数据长度
 extern uint32_t g_uart_rec_offset;   // Flash写入偏移量（相对于APP起始地址）
 extern uint8_t g_last_byte_flag;     // 遗留单字节标记（1=有遗留，0=无遗留）
 extern uint8_t g_last_byte;          // 遗留的单字节（用于奇偶长度拼接）
-extern uint8_t uart_rx_finish;       // 接收完成标志位（1=有新数据待处理）
-extern uint32_t last_receive_time;   // 最后接收时间戳（用于超时检测）
+extern uint8_t g_uart_rx_finish;       // 接收完成标志位（1=有新数据待处理）
+extern uint32_t g_last_receive_time;   // 最后接收时间戳（用于超时检测）
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -123,7 +123,7 @@ int main(void)
     /* USER CODE END WHILE */
 
     // ========== 串口数据处理 ==========
-    if (uart_rx_finish == 1) // 检测是否有新数据待处理
+    if (g_uart_rx_finish == 1) // 检测是否有新数据待处理
     {
       // Flash操作流程：解锁→擦除→写入→锁定
       HAL_FLASH_Unlock();         // 解锁Flash（允许写入操作）
@@ -135,7 +135,7 @@ int main(void)
       memset(g_uart_rec_buff, 0, BOOTLOADER_UART_REC_BUFF_LEN);
 
       // 清除接收完成标志，等待下一次中断
-      uart_rx_finish = 0;
+      g_uart_rx_finish = 0;
     }
 
     // ========== 接收进度显示 ==========
@@ -149,7 +149,7 @@ int main(void)
 // ========== 超时检测与跳转 ==========
 #define RECEIVE_TIMEOUT_MS 2000                                   // 超时时间：2秒（无新数据即认为接收完成）
     if (g_uart_rec_full_len > 0 &&                                // 条件1：已接收数据
-        (HAL_GetTick() - last_receive_time) > RECEIVE_TIMEOUT_MS) // 条件2：超过超时时间
+        (HAL_GetTick() - g_last_receive_time) > RECEIVE_TIMEOUT_MS) // 条件2：超过超时时间
     {
       printf("Receive complete! Total: %d bytes\n", g_uart_rec_full_len);
       printf("Jumping to application...\n");

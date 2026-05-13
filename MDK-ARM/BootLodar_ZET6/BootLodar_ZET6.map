@@ -36,7 +36,7 @@ Section Cross References
     main.o(i.main) refers to stm32f1xx_hal.o(i.HAL_GetTick) for HAL_GetTick
     main.o(i.main) refers to stm32f1xx_hal.o(i.HAL_Delay) for HAL_Delay
     main.o(i.main) refers to int_bootloader.o(i.Int_bootloader_jump_to_app) for Int_bootloader_jump_to_app
-    main.o(i.main) refers to int_bootloader.o(.data) for uart_rx_finish
+    main.o(i.main) refers to int_bootloader.o(.data) for g_uart_rx_finish
     main.o(i.main) refers to int_bootloader.o(.bss) for g_uart_rec_buff
     main.o(i.main) refers to main.o(.data) for last_len
     usart.o(i.HAL_UART_MspDeInit) refers to stm32f1xx_hal_gpio.o(i.HAL_GPIO_DeInit) for HAL_GPIO_DeInit
@@ -1192,8 +1192,8 @@ Image Symbol Table
     g_uart_rec_offset                        0x20000018   Data           4  int_bootloader.o(.data)
     g_last_byte_flag                         0x2000001c   Data           1  int_bootloader.o(.data)
     g_last_byte                              0x2000001d   Data           1  int_bootloader.o(.data)
-    uart_rx_finish                           0x2000001e   Data           1  int_bootloader.o(.data)
-    last_receive_time                        0x20000020   Data           4  int_bootloader.o(.data)
+    g_uart_rx_finish                         0x2000001e   Data           1  int_bootloader.o(.data)
+    g_last_receive_time                      0x20000020   Data           4  int_bootloader.o(.data)
     __stdout                                 0x20000024   Data           4  stdout.o(.data)
     huart1                                   0x20000028   Data          72  usart.o(.bss)
     pFlash                                   0x20000070   Data          32  stm32f1xx_hal_flash.o(.bss)
@@ -1345,7 +1345,7 @@ Image component sizes
       Code (inc. data)   RO Data    RW Data    ZI Data      Debug   Object Name
 
         64          6          0          0          0        735   gpio.o
-       764        170          0         16        512       8968   int_bootloader.o
+       764        170          0         16        512       8976   int_bootloader.o
        360        106          0          2          0     462980   main.o
         36          8        304          0       1024        780   startup_stm32f103xe.o
        192         36          0          9          0       6321   stm32f1xx_hal.o
@@ -1362,7 +1362,7 @@ Image component sizes
        236         30          0          0         72       2074   usart.o
 
     ----------------------------------------------------------------------
-      8112        622        380         36       1640     545153   Object Totals
+      8112        622        380         36       1640     545161   Object Totals
          0          0         32          0          0          0   (incl. Generated)
         14          0          2          5          0          0   (incl. Padding)
 
@@ -1407,8 +1407,8 @@ Image component sizes
 
       Code (inc. data)   RO Data    RW Data    ZI Data      Debug   
 
-      8688        652        380         40       1640     542225   Grand Totals
-      8688        652        380         40       1640     542225   ELF Image Totals
+      8688        652        380         40       1640     542233   Grand Totals
+      8688        652        380         40       1640     542233   ELF Image Totals
       8688        652        380         40          0          0   ROM Totals
 
 ==============================================================================
